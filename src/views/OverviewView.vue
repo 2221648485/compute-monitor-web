@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { monitorApi } from '../api/monitor';
 import type { Cluster, ComputeResource, GPUSummary, ResourceOverview } from '../api/types';
+import { useToast } from '../composables/useToast';
 import EmptyState from '../components/EmptyState.vue';
 import LoadBar from '../components/LoadBar.vue';
 import StatTile from '../components/StatTile.vue';
@@ -11,35 +12,30 @@ const props = defineProps<{
   selectedClusterId: string;
 }>();
 
+const toast = useToast();
 const overview = ref<ResourceOverview | null>(null);
 const compute = ref<ComputeResource | null>(null);
 const gpu = ref<GPUSummary | null>(null);
 const loading = ref(false);
-const error = ref('');
-const overviewWarning = ref('');
-const gpuWarning = ref('');
 
 async function load() {
   loading.value = true;
-  error.value = '';
-  overviewWarning.value = '';
-  gpuWarning.value = '';
   try {
     try {
       overview.value = await monitorApi.resourceOverview();
     } catch (err) {
-      overviewWarning.value = err instanceof Error ? err.message : '跨集群资源概览暂不可用';
+      toast.warning(err instanceof Error ? err.message : '跨集群资源概览暂不可用');
     }
     if (props.selectedClusterId) {
       compute.value = await monitorApi.computeResource(props.selectedClusterId);
       try {
         gpu.value = await monitorApi.gpuSummary(props.selectedClusterId);
       } catch (err) {
-        gpuWarning.value = err instanceof Error ? err.message : 'GPU 汇总暂不可用';
+        toast.warning(err instanceof Error ? err.message : 'GPU 汇总暂不可用');
       }
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '总览加载失败';
+    toast.error(err instanceof Error ? err.message : '总览加载失败');
   } finally {
     loading.value = false;
   }
@@ -57,9 +53,6 @@ onMounted(load);
       <StatTile label="可用 GPU" :value="compute?.summary.availableGPU ?? '-'" detail="资源感知估算" />
     </div>
 
-    <div v-if="error" class="error-banner">{{ error }}</div>
-    <div v-if="overviewWarning" class="info-banner">{{ overviewWarning }}</div>
-    <div v-if="gpuWarning" class="info-banner">{{ gpuWarning }}</div>
     <div v-if="loading" class="loading-panel">正在加载总览...</div>
 
     <div v-if="compute" class="panel-grid two">

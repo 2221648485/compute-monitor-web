@@ -54,6 +54,8 @@ export type LoginResponse = {
 export type Cluster = {
   id: string;
   name: string;
+  access_mode?: string;
+  api_server?: string;
   status?: string;
   description?: string;
   kubeconfig_path?: string;
@@ -65,6 +67,13 @@ export type Cluster = {
 export type CreateClusterRequest = {
   id: string;
   name: string;
+  access_mode?: string;
+  api_server?: string;
+  ca_cert?: string;
+  bearer_token?: string;
+  client_cert?: string;
+  client_key?: string;
+  insecure?: boolean;
   kubeconfig_path?: string;
   prometheus_url?: string;
   description?: string;

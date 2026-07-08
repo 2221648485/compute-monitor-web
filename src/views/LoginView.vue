@@ -3,24 +3,24 @@ import { ref } from 'vue';
 import { LockKeyhole, ServerCog } from 'lucide-vue-next';
 import { monitorApi } from '../api/monitor';
 import type { User } from '../api/types';
+import { useToast } from '../composables/useToast';
 
 const emit = defineEmits<{
   'logged-in': [user: User];
 }>();
 
+const toast = useToast();
 const username = ref('');
 const password = ref('');
 const loading = ref(false);
-const error = ref('');
 
 async function submit() {
   loading.value = true;
-  error.value = '';
   try {
     const result = await monitorApi.login(username.value, password.value);
     emit('logged-in', result.user);
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '登录失败';
+    toast.error(err instanceof Error ? err.message : '登录失败');
   } finally {
     loading.value = false;
   }
@@ -53,7 +53,6 @@ async function submit() {
         <LockKeyhole :size="16" />
         {{ loading ? '正在登录' : '登录' }}
       </button>
-      <p v-if="error" class="form-error">{{ error }}</p>
     </form>
   </main>
 </template>

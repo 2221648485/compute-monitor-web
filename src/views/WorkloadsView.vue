@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { Server } from 'lucide-vue-next';
+import { computed, onMounted, ref, watch } from 'vue';
+import { ChevronLeft, ChevronRight, Search, Server, X } from 'lucide-vue-next';
 import { monitorApi } from '../api/monitor';
-import type { Deployment, WorkloadPod } from '../api/types';
+import type { Deployment, PageResult, WorkloadPod } from '../api/types';
+import { useToast } from '../composables/useToast';
 import DataTable from '../components/DataTable.vue';
 import EmptyState from '../components/EmptyState.vue';
-import StatusPill from '../components/StatusPill.vue';
 
 const props = defineProps<{
   clusterId: string;
@@ -15,34 +15,79 @@ const emit = defineEmits<{
   'open-clusters': [];
 }>();
 
+const toast = useToast();
 const pods = ref<WorkloadPod[]>([]);
 const deployments = ref<Deployment[]>([]);
 const active = ref<'pods' | 'deployments'>('pods');
 const loading = ref(false);
-const error = ref('');
+const keyword = ref('');
+const page = ref(1);
+const pageSize = ref(20);
+const total = ref(0);
+
+const rows = computed(() => (active.value === 'pods' ? pods.value : deployments.value));
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
+const searchLabel = computed(() => (active.value === 'pods' ? '搜索 Pod' : '搜索 Deployment'));
 
 async function load() {
   pods.value = [];
   deployments.value = [];
   if (!props.clusterId) return;
   loading.value = true;
-  error.value = '';
   try {
-    const [podPage, deploymentPage] = await Promise.all([
-      monitorApi.pods(props.clusterId, { page: 1, size: 100 }),
-      monitorApi.deployments(props.clusterId, { page: 1, size: 100 }),
-    ]);
-    pods.value = podPage.items || [];
-    deployments.value = deploymentPage.items || [];
+    const query = {
+      page: page.value,
+      size: pageSize.value,
+      keyword: keyword.value.trim() || undefined,
+    };
+    if (active.value === 'pods') {
+      const podPage: PageResult<WorkloadPod> = await monitorApi.pods(props.clusterId, query);
+      pods.value = podPage.items || [];
+      total.value = podPage.total || 0;
+    } else {
+      const deploymentPage: PageResult<Deployment> = await monitorApi.deployments(props.clusterId, query);
+      deployments.value = deploymentPage.items || [];
+      total.value = deploymentPage.total || 0;
+    }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '加载工作负载失败';
+    toast.error(err instanceof Error ? err.message : '加载工作负载失败');
   } finally {
     loading.value = false;
   }
 }
 
+function search() {
+  page.value = 1;
+  load();
+}
+
+function clearSearch() {
+  keyword.value = '';
+  search();
+}
+
+function changePage(nextPage: number) {
+  page.value = Math.min(Math.max(nextPage, 1), totalPages.value);
+  load();
+}
+
+function changePageSize() {
+  page.value = 1;
+  load();
+}
+
+function switchTab(tab: 'pods' | 'deployments') {
+  active.value = tab;
+  page.value = 1;
+  keyword.value = '';
+  load();
+}
+
 onMounted(load);
-watch(() => props.clusterId, load);
+watch(() => props.clusterId, () => {
+  page.value = 1;
+  load();
+});
 </script>
 
 <template>
@@ -54,7 +99,6 @@ watch(() => props.clusterId, load);
         打开集群纳管
       </button>
     </div>
-    <div v-if="error" class="error-banner">{{ error }}</div>
     <div v-if="loading" class="loading-panel">正在加载工作负载...</div>
 
     <article v-if="clusterId" class="panel">
@@ -64,44 +108,83 @@ watch(() => props.clusterId, load);
           <h2>Pod 与 Deployment</h2>
         </div>
         <div class="segmented">
-          <button :class="{ active: active === 'pods' }" type="button" @click="active = 'pods'">Pod</button>
-          <button :class="{ active: active === 'deployments' }" type="button" @click="active = 'deployments'">Deployment</button>
+          <button :class="{ active: active === 'pods' }" type="button" @click="switchTab('pods')">Pod</button>
+          <button :class="{ active: active === 'deployments' }" type="button" @click="switchTab('deployments')">Deployment</button>
         </div>
       </div>
 
+      <div class="toolbar-line workload-toolbar">
+        <label class="search-field inline-search workload-search">
+          <span>{{ searchLabel }}</span>
+          <div class="search-box">
+            <Search :size="16" />
+            <input v-model="keyword" placeholder="名称 / Namespace / 节点 / IP" autocomplete="off" @keyup.enter="search" />
+            <button v-if="keyword" type="button" title="清空搜索" @click="clearSearch">
+              <X :size="14" />
+            </button>
+          </div>
+        </label>
+        <button class="primary-button" type="button" @click="search">
+          <Search :size="15" />
+          搜索
+        </button>
+      </div>
+
       <template v-if="active === 'pods'">
-        <DataTable
-          v-if="pods.length"
-          :rows="pods as unknown as Record<string, unknown>[]"
-          :columns="[
-            { key: 'name', label: 'Pod' },
-            { key: 'namespace', label: 'Namespace' },
-            { key: 'nodeName', label: '节点' },
-            { key: 'phase', label: '状态' },
-            { key: 'restartCount', label: '重启次数' },
-            { key: 'podIP', label: 'Pod IP' },
-          ]"
-        />
-        <div v-if="pods.length" class="status-preview">
-          <StatusPill v-for="pod in pods.slice(0, 8)" :key="`${pod.namespace}-${pod.name}`" :value="pod.phase" />
+        <div v-if="pods.length" class="scroll-table workload-table">
+          <DataTable
+            :rows="pods as unknown as Record<string, unknown>[]"
+            :columns="[
+              { key: 'name', label: 'Pod' },
+              { key: 'namespace', label: 'Namespace' },
+              { key: 'nodeName', label: 'Node' },
+              { key: 'phase', label: 'Status' },
+              { key: 'restartCount', label: 'Restarts' },
+              { key: 'podIP', label: 'Pod IP' },
+            ]"
+          />
         </div>
-        <EmptyState v-else title="暂无 Pod" message="请同步 Pod 缓存，或确认集群中存在工作负载。" />
+        <EmptyState v-else title="暂无 Pod" message="请同步 Pod 缓存，或确认搜索条件是否正确。" />
       </template>
 
       <template v-else>
-        <DataTable
-          v-if="deployments.length"
-          :rows="deployments as unknown as Record<string, unknown>[]"
-          :columns="[
-            { key: 'name', label: 'Deployment' },
-            { key: 'namespace', label: 'Namespace' },
-            { key: 'replicas', label: '副本数' },
-            { key: 'readyReplicas', label: 'Ready' },
-            { key: 'availableReplicas', label: 'Available' },
-          ]"
-        />
+        <div v-if="deployments.length" class="scroll-table workload-table">
+          <DataTable
+            :rows="deployments as unknown as Record<string, unknown>[]"
+            :columns="[
+              { key: 'name', label: 'Deployment' },
+              { key: 'namespace', label: 'Namespace' },
+              { key: 'replicas', label: 'Replicas' },
+              { key: 'readyReplicas', label: 'Ready' },
+              { key: 'availableReplicas', label: 'Available' },
+            ]"
+          />
+        </div>
         <EmptyState v-else title="暂无 Deployment" message="当前页面展示已同步的 Deployment 清单。" />
       </template>
+
+      <div class="pagination-bar">
+        <span>共 {{ total }} 条，当前第 {{ page }} / {{ totalPages }} 页</span>
+        <label>
+          <span>每页</span>
+          <select v-model.number="pageSize" @change="changePageSize">
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+        </label>
+        <div class="pagination-actions">
+          <button type="button" :disabled="page <= 1" @click="changePage(page - 1)">
+            <ChevronLeft :size="15" />
+            上一页
+          </button>
+          <button type="button" :disabled="page >= totalPages" @click="changePage(page + 1)">
+            下一页
+            <ChevronRight :size="15" />
+          </button>
+        </div>
+      </div>
     </article>
   </section>
 </template>

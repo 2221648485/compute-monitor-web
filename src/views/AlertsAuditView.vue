@@ -2,19 +2,19 @@
 import { onMounted, ref } from 'vue';
 import { monitorApi } from '../api/monitor';
 import type { AlertEvent, AlertRule, AuditLog } from '../api/types';
+import { useToast } from '../composables/useToast';
 import DataTable from '../components/DataTable.vue';
 import EmptyState from '../components/EmptyState.vue';
 
+const toast = useToast();
 const tab = ref<'events' | 'rules' | 'audit'>('events');
 const events = ref<AlertEvent[]>([]);
 const rules = ref<AlertRule[]>([]);
 const logs = ref<AuditLog[]>([]);
 const loading = ref(false);
-const error = ref('');
 
 async function load() {
   loading.value = true;
-  error.value = '';
   try {
     const [eventPage, rulePage, logPage] = await Promise.all([
       monitorApi.alertEvents({ page: 1, size: 50 }),
@@ -25,7 +25,7 @@ async function load() {
     rules.value = rulePage.items || [];
     logs.value = logPage.items || [];
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '告警审计加载失败';
+    toast.error(err instanceof Error ? err.message : '告警审计加载失败');
   } finally {
     loading.value = false;
   }
@@ -36,7 +36,6 @@ onMounted(load);
 
 <template>
   <section class="view-stack">
-    <div v-if="error" class="error-banner">{{ error }}</div>
     <div v-if="loading" class="loading-panel">正在加载告警与审计...</div>
 
     <article class="panel">
@@ -58,7 +57,7 @@ onMounted(load);
         :columns="[
           { key: 'title', label: '事件' },
           { key: 'level', label: '等级' },
-          { key: 'status', label: '状态' },
+          { key: 'status', label: 'Status' },
           { key: 'createdAt', label: '时间' },
         ]"
       />
@@ -69,7 +68,7 @@ onMounted(load);
           { key: 'name', label: '规则' },
           { key: 'metric', label: '指标' },
           { key: 'level', label: '等级' },
-          { key: 'status', label: '状态' },
+          { key: 'status', label: 'Status' },
         ]"
       />
       <DataTable

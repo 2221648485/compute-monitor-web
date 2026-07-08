@@ -47,7 +47,8 @@ function withQuery(path: string, query?: Record<string, unknown>) {
 
 async function request<T>(path: string, options: RequestInit = {}, query?: Record<string, unknown>): Promise<T> {
   const headers = new Headers(options.headers);
-  if (!headers.has('Content-Type') && options.body) {
+  // FormData 需要浏览器自动生成 boundary，不能被 JSON Content-Type 覆盖。
+  if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
   if (tokenStore.accessToken) {
@@ -78,6 +79,7 @@ export const api = {
   get: <T>(path: string, query?: Record<string, unknown>) => request<T>(path, { method: 'GET' }, query),
   post: <T>(path: string, body?: unknown, query?: Record<string, unknown>) =>
     request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) }, query),
+  postForm: <T>(path: string, body: FormData, query?: Record<string, unknown>) => request<T>(path, { method: 'POST', body }, query),
   put: <T>(path: string, body?: unknown, query?: Record<string, unknown>) =>
     request<T>(path, { method: 'PUT', body: body === undefined ? undefined : JSON.stringify(body) }, query),
   delete: <T>(path: string, query?: Record<string, unknown>) => request<T>(path, { method: 'DELETE' }, query),

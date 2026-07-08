@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { monitorApi } from '../api/monitor';
 import type { Cluster, MigrationPlan } from '../api/types';
+import { useToast } from '../composables/useToast';
 import DataTable from '../components/DataTable.vue';
 import EmptyState from '../components/EmptyState.vue';
 import StatusPill from '../components/StatusPill.vue';
@@ -10,14 +11,13 @@ defineProps<{
   cluster?: Cluster;
 }>();
 
+const toast = useToast();
 const plans = ref<MigrationPlan[]>([]);
 const tasks = ref<MigrationPlan[]>([]);
 const loading = ref(false);
-const error = ref('');
 
 async function load() {
   loading.value = true;
-  error.value = '';
   try {
     const [planPage, taskPage] = await Promise.all([
       monitorApi.migrationPlans({ page: 1, size: 50 }),
@@ -26,7 +26,7 @@ async function load() {
     plans.value = planPage.items || [];
     tasks.value = taskPage.items || [];
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '迁移数据加载失败';
+    toast.error(err instanceof Error ? err.message : '迁移数据加载失败');
   } finally {
     loading.value = false;
   }
@@ -37,7 +37,6 @@ onMounted(load);
 
 <template>
   <section class="view-stack">
-    <div v-if="error" class="error-banner">{{ error }}</div>
     <div v-if="loading" class="loading-panel">正在加载迁移计划...</div>
 
     <div class="panel-grid two">
@@ -52,7 +51,7 @@ onMounted(load);
           :columns="[
             { key: 'planId', label: '计划 ID' },
             { key: 'name', label: '名称' },
-            { key: 'status', label: '状态' },
+            { key: 'status', label: 'Status' },
             { key: 'sourceClusterId', label: '源集群' },
             { key: 'targetClusterId', label: '目标集群' },
           ]"

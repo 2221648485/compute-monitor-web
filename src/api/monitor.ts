@@ -41,6 +41,7 @@ export const monitorApi = {
   resetUserPassword: (userId: number, password: string) => api.put<{ id: number }>(`${admin}/users/${userId}/password`, { password }),
   clusters: (query?: Record<string, unknown>) => api.get<PageResult<Cluster>>(`${admin}/clusters`, query),
   createCluster: (payload: CreateClusterRequest) => api.post<Cluster>(`${admin}/clusters`, payload),
+  uploadCluster: (payload: FormData) => api.postForm<Cluster>(`${admin}/clusters/upload`, payload),
   updateCluster: (clusterId: string, payload: UpdateClusterRequest) => api.put<Cluster>(`${admin}/clusters/${clusterId}`, payload),
   deleteCluster: (clusterId: string) => api.delete<{ clusterId: string; deleted: boolean }>(`${admin}/clusters/${clusterId}`),
   testCluster: (clusterId: string) => api.post<{ clusterId: string; connected: boolean; namespaceCount: number }>(`${admin}/clusters/${clusterId}/test`),

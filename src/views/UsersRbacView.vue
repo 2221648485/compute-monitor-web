@@ -3,16 +3,16 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { KeyRound, Pencil, Plus, RotateCcw, ShieldCheck, UserRoundCog, X } from 'lucide-vue-next';
 import { monitorApi } from '../api/monitor';
 import type { CreateUserRequest, User } from '../api/types';
+import { useToast } from '../composables/useToast';
 import EmptyState from '../components/EmptyState.vue';
 import StatusPill from '../components/StatusPill.vue';
 
+const toast = useToast();
 const users = ref<User[]>([]);
 const total = ref(0);
 const loading = ref(false);
 const creating = ref(false);
 const resettingId = ref<number | null>(null);
-const message = ref('');
-const error = ref('');
 const showCreate = ref(false);
 const filterRole = ref('');
 const editingUserId = ref<number | null>(null);
@@ -62,14 +62,10 @@ function resetForm() {
 
 function openCreate() {
   resetForm();
-  error.value = '';
-  message.value = '';
   showCreate.value = true;
 }
 
 function openEdit(user: User) {
-  error.value = '';
-  message.value = '';
   editingUserId.value = user.id;
   form.username = user.username;
   form.password = '';
@@ -88,7 +84,6 @@ function closeForm() {
 
 async function loadUsers() {
   loading.value = true;
-  error.value = '';
   try {
     const result = await monitorApi.users({
       page: 1,
@@ -98,7 +93,7 @@ async function loadUsers() {
     users.value = result.items || [];
     total.value = result.total || users.value.length;
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '加载用户列表失败';
+    toast.error(err instanceof Error ? err.message : '加载用户列表失败');
   } finally {
     loading.value = false;
   }
@@ -106,12 +101,10 @@ async function loadUsers() {
 
 async function saveUser() {
   if (!canSubmit.value) {
-    error.value = '请填写用户名、显示名、角色；新增用户还需要初始密码。';
+    toast.warning('请填写用户名、显示名、角色；新增用户还需要至少 8 位初始密码。');
     return;
   }
   creating.value = true;
-  error.value = '';
-  message.value = '';
   try {
     if (editingUserId.value !== null) {
       await monitorApi.updateUser(editingUserId.value, {
@@ -120,7 +113,7 @@ async function saveUser() {
         phone: form.phone?.trim() || undefined,
         role: form.role,
       });
-      message.value = `${form.username} 已更新。`;
+      toast.success(`${form.username} 已更新。`);
     } else {
       await monitorApi.createUser({
         username: form.username.trim(),
@@ -131,27 +124,25 @@ async function saveUser() {
         role: form.role,
         status: form.status,
       });
-      message.value = `${form.username} 已创建。`;
+      toast.success(`${form.username} 已创建。`);
     }
     closeForm();
     await loadUsers();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '保存用户失败';
+    toast.error(err instanceof Error ? err.message : '保存用户失败');
   } finally {
     creating.value = false;
   }
 }
 
 async function toggleStatus(user: User) {
-  error.value = '';
-  message.value = '';
   try {
     const nextStatus = user.status === 1 ? 0 : 1;
     await monitorApi.updateUserStatus(user.id, nextStatus);
-    message.value = `${user.username} 已${nextStatus === 1 ? '启用' : '禁用'}。`;
+    toast.success(`${user.username} 已${nextStatus === 1 ? '启用' : '禁用'}。`);
     await loadUsers();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '修改用户状态失败';
+    toast.error(err instanceof Error ? err.message : '修改用户状态失败');
   }
 }
 
@@ -159,17 +150,15 @@ async function resetPassword(user: User) {
   const password = window.prompt(`请输入 ${user.username} 的新密码，至少 8 位。`);
   if (!password) return;
   if (password.length < 8) {
-    error.value = '新密码至少 8 位。';
+    toast.warning('新密码至少 8 位。');
     return;
   }
   resettingId.value = user.id;
-  error.value = '';
-  message.value = '';
   try {
     await monitorApi.resetUserPassword(user.id, password);
-    message.value = `${user.username} 的密码已重置。`;
+    toast.success(`${user.username} 的密码已重置。`);
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '重置密码失败';
+    toast.error(err instanceof Error ? err.message : '重置密码失败');
   } finally {
     resettingId.value = null;
   }
@@ -180,9 +169,6 @@ onMounted(loadUsers);
 
 <template>
   <section class="view-stack">
-    <div v-if="message" class="info-banner">{{ message }}</div>
-    <div v-if="error" class="error-banner">{{ error }}</div>
-
     <div class="panel-grid two">
       <article class="panel">
         <div class="panel-head with-tabs">
@@ -302,7 +288,7 @@ onMounted(loadUsers);
           </div>
         </div>
         <div class="warning-note">
-          当前页面只接入后端真实存在的用户管理能力。完整 RBAC 还需要后端提供角色、权限、角色-权限绑定、菜单/资源和权限中间件接口。
+          当前页面只接入后端真实存在的用户管理能力。完整 RBAC 还需要后端提供角色、权限、角色权限绑定、菜单资源和权限中间件接口。
         </div>
       </article>
     </div>

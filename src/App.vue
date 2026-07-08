@@ -4,6 +4,8 @@ import { Activity, Bell, Boxes, Cpu, GitBranch, Layers, LogOut, RefreshCw, Serve
 import { ApiError, tokenStore } from './api/client';
 import { monitorApi } from './api/monitor';
 import type { Cluster, User } from './api/types';
+import { useToast } from './composables/useToast';
+import ToastHost from './components/ToastHost.vue';
 import LoginView from './views/LoginView.vue';
 import OverviewView from './views/OverviewView.vue';
 import ClustersView from './views/ClustersView.vue';
@@ -25,12 +27,12 @@ const tabs = [
   { key: 'users', label: '用户 / RBAC', icon: Users },
 ] as const;
 
+const toast = useToast();
 const activeTab = ref<TabKey>('overview');
 const user = ref<User | null>(null);
 const clusters = ref<Cluster[]>([]);
 const selectedClusterId = ref('');
 const loadingShell = ref(true);
-const globalError = ref('');
 const refreshKey = ref(0);
 
 const selectedCluster = computed(() => clusters.value.find((cluster) => cluster.id === selectedClusterId.value));
@@ -49,7 +51,6 @@ async function loadClusters(preferredClusterId?: string) {
 
 async function bootstrap() {
   loadingShell.value = true;
-  globalError.value = '';
   try {
     if (tokenStore.accessToken) {
       user.value = await monitorApi.me();
@@ -59,7 +60,7 @@ async function bootstrap() {
     if (error instanceof ApiError && error.status === 401) {
       user.value = null;
     } else {
-      globalError.value = error instanceof Error ? error.message : '初始化失败';
+      toast.error(error instanceof Error ? error.message : '初始化失败');
     }
   } finally {
     loadingShell.value = false;
@@ -79,12 +80,12 @@ function logout() {
 }
 
 async function refreshAll() {
-  globalError.value = '';
   try {
     await loadClusters();
     refreshKey.value += 1;
+    toast.success('数据已刷新');
   } catch (error) {
-    globalError.value = error instanceof Error ? error.message : '刷新失败';
+    toast.error(error instanceof Error ? error.message : '刷新失败');
   }
 }
 
@@ -101,6 +102,7 @@ onMounted(bootstrap);
 </script>
 
 <template>
+  <ToastHost />
   <LoginView v-if="!user && !loadingShell" @logged-in="onLoggedIn" />
 
   <main v-else class="app-shell">
@@ -109,7 +111,7 @@ onMounted(bootstrap);
         <div class="brand-mark"><Layers :size="20" /></div>
         <div>
           <strong>Compute Monitor</strong>
-          <span>GPU Resource Console</span>
+          <span>GPU 资源控制台</span>
         </div>
       </div>
 
@@ -127,7 +129,7 @@ onMounted(bootstrap);
       </nav>
 
       <div class="side-footer">
-        <span>{{ user?.display_name || user?.displayName || user?.username || 'Admin' }}</span>
+        <span>{{ user?.display_name || user?.displayName || user?.username || '管理员' }}</span>
         <button class="icon-button" type="button" title="退出登录" @click="logout">
           <LogOut :size="17" />
         </button>
@@ -157,7 +159,6 @@ onMounted(bootstrap);
         </div>
       </header>
 
-      <div v-if="globalError" class="error-banner">{{ globalError }}</div>
       <div v-if="loadingShell" class="loading-panel">正在连接后端...</div>
       <template v-else>
         <OverviewView v-if="activeTab === 'overview'" :key="refreshKey" :clusters="clusters" :selected-cluster-id="selectedClusterId" />
