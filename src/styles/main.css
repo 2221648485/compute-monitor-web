@@ -794,6 +794,12 @@ dd {
   gap: 10px;
 }
 
+.user-toolbar {
+  margin-bottom: 18px;
+  justify-content: space-between;
+  align-items: end;
+}
+
 .user-row {
   display: grid;
   grid-template-columns: 38px minmax(180px, 1fr) auto auto auto;

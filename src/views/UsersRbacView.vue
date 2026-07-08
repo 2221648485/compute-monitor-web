@@ -182,7 +182,7 @@ onMounted(loadUsers);
           </button>
         </div>
 
-        <div class="toolbar-line">
+        <div class="toolbar-line user-toolbar">
           <label class="cluster-select">
             <span>角色筛选</span>
             <select v-model="filterRole" @change="loadUsers">
