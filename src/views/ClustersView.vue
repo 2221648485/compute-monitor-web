@@ -239,14 +239,14 @@ async function remove(cluster: Cluster) {
       </div>
 
       <div class="toolbar-line cluster-toolbar">
-        <label class="search-field inline-search">
+        <label class="filter-control cluster-search-control">
           <span>搜索集群</span>
           <div class="search-box">
             <Search :size="16" />
             <input v-model="keyword" placeholder="ID / 名称 / 描述" autocomplete="off" @keyup.enter="searchClusters" />
           </div>
         </label>
-        <label class="cluster-select compact">
+        <label class="filter-control status-filter-control">
           <span>状态</span>
           <select v-model="statusFilter" @change="searchClusters">
             <option value="">全部</option>
@@ -255,11 +255,11 @@ async function remove(cluster: Cluster) {
             <option value="Disabled">Disabled</option>
           </select>
         </label>
-        <button type="button" :disabled="listLoading" @click="searchClusters">
+        <button class="filter-button" type="button" :disabled="listLoading" @click="searchClusters">
           <Filter :size="15" />
           筛选
         </button>
-        <button type="button" @click="clearFilters">清空</button>
+        <button class="filter-button" type="button" @click="clearFilters">清空</button>
       </div>
 
       <form v-if="showForm" class="cluster-form" @submit.prevent="saveCluster">

@@ -673,6 +673,29 @@ dd {
   justify-content: flex-start;
   margin-bottom: 18px;
   flex-wrap: wrap;
+  align-items: end;
+}
+
+.cluster-toolbar {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) 260px auto auto;
+  justify-content: stretch;
+}
+
+.filter-control {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.filter-control .search-box,
+.filter-control select {
+  width: 100%;
+}
+
+.filter-button {
+  height: 44px;
+  align-self: end;
 }
 
 .form-grid {
@@ -728,12 +751,16 @@ dd {
 .search-box {
   height: 44px;
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 28px;
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   padding: 0 10px 0 12px;
   border: 1px solid var(--line);
   background: white;
+}
+
+.search-box.has-clear {
+  grid-template-columns: 18px minmax(0, 1fr) 30px;
 }
 
 .search-box input {
@@ -745,6 +772,11 @@ dd {
 
 .search-box input:focus {
   outline: 0;
+}
+
+.clear-search-button {
+  color: var(--ink) !important;
+  border-left: 1px solid var(--line) !important;
 }
 
 .file-field input {
@@ -775,6 +807,19 @@ dd {
 .user-row span,
 .muted-line {
   color: var(--muted);
+}
+
+.user-row > div:nth-child(2) {
+  display: grid;
+  gap: 5px;
+}
+
+.user-row > div:nth-child(2) strong {
+  line-height: 1.25;
+}
+
+.user-row > div:nth-child(2) span {
+  line-height: 1.35;
 }
 
 .user-avatar {
@@ -898,6 +943,14 @@ dd {
   padding-top: 14px;
   border-top: 1px solid var(--line);
   color: var(--muted);
+}
+
+.pagination-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .pagination-bar label {
@@ -1077,6 +1130,12 @@ dd {
   .pagination-bar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .cluster-toolbar,
+  .pagination-controls {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .form-grid {

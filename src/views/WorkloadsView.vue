@@ -116,10 +116,10 @@ watch(() => props.clusterId, () => {
       <div class="toolbar-line workload-toolbar">
         <label class="search-field inline-search workload-search">
           <span>{{ searchLabel }}</span>
-          <div class="search-box">
+          <div class="search-box" :class="{ 'has-clear': keyword }">
             <Search :size="16" />
             <input v-model="keyword" placeholder="名称 / Namespace / 节点 / IP" autocomplete="off" @keyup.enter="search" />
-            <button v-if="keyword" type="button" title="清空搜索" @click="clearSearch">
+            <button v-if="keyword" class="clear-search-button" type="button" title="清空搜索" @click="clearSearch">
               <X :size="14" />
             </button>
           </div>
@@ -165,24 +165,26 @@ watch(() => props.clusterId, () => {
 
       <div class="pagination-bar">
         <span>共 {{ total }} 条，当前第 {{ page }} / {{ totalPages }} 页</span>
-        <label>
-          <span>每页</span>
-          <select v-model.number="pageSize" @change="changePageSize">
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-        </label>
-        <div class="pagination-actions">
-          <button type="button" :disabled="page <= 1" @click="changePage(page - 1)">
-            <ChevronLeft :size="15" />
-            上一页
-          </button>
-          <button type="button" :disabled="page >= totalPages" @click="changePage(page + 1)">
-            下一页
-            <ChevronRight :size="15" />
-          </button>
+        <div class="pagination-controls">
+          <label>
+            <span>每页</span>
+            <select v-model.number="pageSize" @change="changePageSize">
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+          </label>
+          <div class="pagination-actions">
+            <button type="button" :disabled="page <= 1" @click="changePage(page - 1)">
+              <ChevronLeft :size="15" />
+              上一页
+            </button>
+            <button type="button" :disabled="page >= totalPages" @click="changePage(page + 1)">
+              下一页
+              <ChevronRight :size="15" />
+            </button>
+          </div>
         </div>
       </div>
     </article>
